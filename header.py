@@ -20,7 +20,7 @@ def fetch_data(domain: str, dataset_id: str, limit: int, date: str) -> pd.DataFr
     return df
 
 
-def standardize_data(df: pd.DataFrame, city_name: str) -> pd.DataFrame:
+def data_standardization(df: pd.DataFrame, city_name: str) -> pd.DataFrame:
     """
     Standardize the Seattle dataset by renaming columns and converting data types.
 
@@ -93,7 +93,7 @@ def main():
     for city_name, config in datasets.items():
         print(f'=== Processing {city_name} ===')
         df = fetch_data(config['domain'], config['dataset_id'], limit=100, date=where_clause)
-        standardized_df = standardize_data(df, city_name)
+        standardized_df = data_standardization(df, city_name)
         print(standardized_df.head())
         
 
