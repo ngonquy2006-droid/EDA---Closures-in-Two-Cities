@@ -1,6 +1,8 @@
 import pandas as pd
 from sodapy import Socrata
 
+pd.set_option('display.max_columns', None)
+
 
 def fetch_data(domain: str, dataset_id: str, limit: int, date: str) -> pd.DataFrame:
     """
@@ -33,6 +35,14 @@ def data_standardization(df: pd.DataFrame, city_name: str) -> pd.DataFrame:
     """
     # Rename columns for consistency
     standard_df = df.copy()
+    standard_columns = [ 
+    'type', 
+    'start date', 
+    'end date', 
+    'location', 
+    'from intersection', 
+    'to intersection'
+    ]
 
     if city_name == 'Seattle':
         standard_df = standard_df[['permit_type', 'start_date', 'end_date',
@@ -40,30 +50,55 @@ def data_standardization(df: pd.DataFrame, city_name: str) -> pd.DataFrame:
         standard_df = standard_df.rename(columns={
             'permit_type': 'type',
             'street_on': 'location',
-            'street_from': 'from_intersection',
-            'street_to': 'to_intersection',
+            'street_from': 'from intersection',
+            'street_to': 'to intersection',
         })
-        standard_df['start_date'] = pd.to_datetime(standard_df['start_date'])
-        standard_df['end_date'] = pd.to_datetime(standard_df['end_date'])
-        standard_df.insert(0, 'city', city_name)
+
 
     elif city_name == 'San_Francisco':
-        standard_df = standard_df[['type', 'start_dt', 'end_dt',
+        standard_df = standard_df[['type', 'start_date', 'end_date',
                                    'street', 'from_st', 'to_st']]
         standard_df = standard_df.rename(columns={
             'type': 'type',
             'street': 'location',
-            'from_st': 'from_intersection',
-            'to_st': 'to_intersection',
+            'from_st': 'from intersection',
+            'to_st': 'to intersection',
         })
-        standard_df['start_date'] = pd.to_datetime(standard_df['start_dt'])
-        standard_df['end_date'] = pd.to_datetime(standard_df['end_dt'])
-        standard_df.insert(0, 'city', city_name)
+        
+    standard_df['start date'] = pd.to_datetime(standard_df['start_date'])
+    standard_df['end date'] = pd.to_datetime(standard_df['end_date'])
+    standard_df = standard_df.reindex(columns=standard_columns)
 
     return standard_df
 
 
+def category_comparison(combined_df: pd.DataFrame, category: str) -> pd.DataFrame:
+    """
+    Compare the specified category between Seattle and San Francisco datasets.
+
+    Parameters:
+    combined_df (pd.DataFrame): The combined DataFrame containing both datasets.
+    category (str): The category to compare.
+
+    Returns:
+    pd.DataFrame: A DataFrame showing the comparison of the specified category.
+    """
+    seattle_series = combined_df[('Seattle', category)].dropna()
+    sf_series = combined_df[('San_Francisco', category)].dropna()
+
+    # Get value counts for each and combine them side-by-side into a single DataFrame
+    comparison_df = pd.DataFrame({
+        'Seattle': seattle_series.value_counts(),
+        'San_Francisco': sf_series.value_counts(),
+    }).fillna(0).astype(int)
+
+    return comparison_df
+
+
 def data_dimensions(df: pd.DataFrame, city_name: str) -> None:
+    """
+    Print the dimensions of the DataFrame and check for missing data.
+    """
     # Basic EDA inspection fulfilling project requirements
     print(f'{city_name} Dataset Dimensions: {df.shape[0]} rows, {df.shape[1]} columns')
 
@@ -90,12 +125,21 @@ def main():
     }
     where_clause = "start_date >= '2025-01-01T00:00:00'"
 
-    for city_name, config in datasets.items():
-        print(f'=== Processing {city_name} ===')
-        df = fetch_data(config['domain'], config['dataset_id'], limit=100, date=where_clause)
-        standardized_df = data_standardization(df, city_name)
-        print(standardized_df.head())
-        
+    seattle_df = fetch_data(datasets['Seattle']['domain'],
+                             datasets['Seattle']['dataset_id'], limit=100, date=where_clause)
+    san_francisco_df = fetch_data(datasets['San_Francisco']['domain'],
+                                  datasets['San_Francisco']['dataset_id'], limit=100, date=where_clause)
+
+    seattle_df = data_standardization(seattle_df, 'Seattle')
+    sf_df = data_standardization(san_francisco_df, 'San_Francisco')
+    combined_df = pd.concat([seattle_df, sf_df], axis=1,
+                            keys=['Seattle', 'San_Francisco'])
+    
+    # print('=== Combined Dataset ===')
+    # print(combined_df.head(20))
+    # comparison_df = category_comparison(combined_df, 'type')
+    # print('=== Category Comparison ===')    
+    # print(comparison_df)
 
 if __name__ == "__main__":
     main()
