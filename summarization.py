@@ -54,7 +54,6 @@ def data_standardization(df: pd.DataFrame, city_name: str) -> pd.DataFrame:
             'street_to': 'to intersection',
         })
 
-
     elif city_name == 'San_Francisco':
         standard_df = standard_df[['type', 'start_date', 'end_date',
                                    'street', 'from_st', 'to_st']]
@@ -67,12 +66,40 @@ def data_standardization(df: pd.DataFrame, city_name: str) -> pd.DataFrame:
         
     standard_df['start date'] = pd.to_datetime(standard_df['start_date'])
     standard_df['end date'] = pd.to_datetime(standard_df['end_date'])
+    standard_df = standard_df.drop(columns=['start_date', 'end_date'])
     standard_df = standard_df.reindex(columns=standard_columns)
+
 
     return standard_df
 
 
-def category_comparison(combined_df: pd.DataFrame, category: str) -> pd.DataFrame:
+def data_dimensions(df: pd.DataFrame, name: str) -> None:
+    """
+    Print the dimensions of the DataFrame and check for missing data.
+    """
+    # Basic EDA inspection fulfilling project requirements
+    print(f'{name} Dataset Dimensions: {df.shape[0]} rows, {df.shape[1]} columns')
+
+    # Check for missing data
+    missing_counts = df.isnull().sum()
+    missing_pct = (missing_counts / len(df)) * 100
+    missing_pct = missing_pct[missing_pct > 0]
+
+    if missing_pct.empty:
+        print(f'{name} has no missing data.')
+    else:
+        print(f'{name} Missing Data Percentage:')
+        print(missing_pct)
+
+    if 'city' in df.columns:
+        per_city = df.isnull().groupby(df['city']).mean().mul(100)
+        per_city = per_city.loc[:, (per_city > 0).any(axis=0)]
+        if not per_city.empty:
+            print(f'{name} Missing Data Percentage by city:')
+            print(per_city)
+
+
+def category_comparison(df: pd.DataFrame, category: str) -> pd.DataFrame:
     """
     Compare the specified category between Seattle and San Francisco datasets.
 
@@ -83,33 +110,27 @@ def category_comparison(combined_df: pd.DataFrame, category: str) -> pd.DataFram
     Returns:
     pd.DataFrame: A DataFrame showing the comparison of the specified category.
     """
-    seattle_series = combined_df[('Seattle', category)].dropna()
-    sf_series = combined_df[('San_Francisco', category)].dropna()
+    if category not in df.columns:
+        raise KeyError(f"'{category}' is not a column of the DataFrame")
 
-    # Get value counts for each and combine them side-by-side into a single DataFrame
-    comparison_df = pd.DataFrame({
-        'Seattle': seattle_series.value_counts(),
-        'San_Francisco': sf_series.value_counts(),
-    }).fillna(0).astype(int)
+    comparison_df = (df.groupby('city')[category]
+                     .value_counts().unstack(level=0)
+                     .fillna(0).astype(int))
 
     return comparison_df
 
 
-def data_dimensions(df: pd.DataFrame, city_name: str) -> None:
+def data_summary(df: pd.DataFrame, numeric1: str, numeric2: str) -> pd.DataFrame:
     """
-    Print the dimensions of the DataFrame and check for missing data.
+    Print a summary of the DataFrame, including data types and basic statistics.
+    Which are the seven-number summary
     """
-    # Basic EDA inspection fulfilling project requirements
-    print(f'{city_name} Dataset Dimensions: {df.shape[0]} rows, {df.shape[1]} columns')
+    df = df.copy()
 
-    # Check for missing data
-    missing_counts = df.isnull().sum()
-    missing_percentage = (missing_counts / len(df)) * 100
-    
-    print(f'{city_name} Missing Data Summary (Top columns with nulls):')
-    print(missing_counts[missing_counts > 0].head())
-    print(f'{city_name} Missing Data Percentage:')
-    print(missing_percentage[missing_percentage > 0].head())
+    df['duration hours'] = (df[numeric2] - df[numeric1]).dt.total_seconds() / 3600
+    summary = df.groupby('city').describe()
+
+    return summary
 
 
 def main():
@@ -132,14 +153,15 @@ def main():
 
     seattle_df = data_standardization(seattle_df, 'Seattle')
     sf_df = data_standardization(san_francisco_df, 'San_Francisco')
-    combined_df = pd.concat([seattle_df, sf_df], axis=1,
-                            keys=['Seattle', 'San_Francisco'])
     
-    # print('=== Combined Dataset ===')
-    # print(combined_df.head(20))
-    # comparison_df = category_comparison(combined_df, 'type')
-    # print('=== Category Comparison ===')    
-    # print(comparison_df)
+    combined_df = pd.concat([seattle_df.assign(city='Seattle'),
+                             sf_df.assign(city='San_Francisco')],
+                             axis=0, ignore_index=True)
+
+    # summary = data_summary(combined_df, 'start date', 'end date')
+    # print(summary)
+    # print(combined_df.head())
+    print(data_dimensions(combined_df, 'Combined'))
 
 if __name__ == "__main__":
     main()
