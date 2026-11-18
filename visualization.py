@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import pandas as pd
+import os
 
 from summarization import fetch_data
 
@@ -15,7 +16,7 @@ def street_counts(data: pd.DataFrame) -> pd.Series:
     return data['location'].value_counts().head(5)
 
 
-def plot_months(data: pd.DataFrame, city: str) -> None:
+def plot_months(data: pd.DataFrame, city: str, folder: str) -> None:
     """Save a bar chart of sampled closure records by start month."""
     counts = monthly_counts(data)
     fig, ax = plt.subplots()
@@ -25,11 +26,14 @@ def plot_months(data: pd.DataFrame, city: str) -> None:
     ax.set_ylabel('Number of sampled records')
     ax.set_title(f'{city}: Closure start months in the 2026 sample')
     fig.tight_layout()
-    fig.savefig(f'{city}_months.png')
+
+    output_folder = folder
+    file_path = os.path.join(output_folder, f'{city}_months.png')
+    fig.savefig(file_path)
     plt.close(fig)
 
 
-def plot_streets(data: pd.DataFrame, city: str) -> None:
+def plot_streets(data: pd.DataFrame, city: str, folder: str) -> None:
     """Save a bar chart of the most frequent streets in the sample."""
     counts = street_counts(data)
     fig, ax = plt.subplots(figsize=(9, 4))
@@ -39,7 +43,10 @@ def plot_streets(data: pd.DataFrame, city: str) -> None:
     ax.set_ylabel('Reported street')
     ax.set_title(f'{city}: Most frequent streets in the 2026 sample')
     fig.tight_layout()
-    fig.savefig(f'{city}_streets.png')
+
+    output_folder = folder
+    file_path = os.path.join(output_folder, f'{city}_streets.png')
+    fig.savefig(file_path)
     plt.close(fig)
 
 
@@ -64,10 +71,13 @@ def main() -> None:
     seattle['start date'] = pd.to_datetime(seattle['start_date'])
     sf['start date'] = pd.to_datetime(sf['start_date'])
 
-    plot_months(seattle, 'Seattle')
-    plot_streets(seattle, 'Seattle')
-    plot_months(sf, 'San Francisco')
-    plot_streets(sf, 'San Francisco')
+    folder = 'visualization images'
+    os.makedirs(folder, exist_ok=True)
+
+    plot_months(seattle, 'Seattle', folder)
+    plot_streets(seattle, 'Seattle', folder)
+    plot_months(sf, 'San Francisco', folder)
+    plot_streets(sf, 'San Francisco', folder)
     print('Saved all four charts.')
 
 
