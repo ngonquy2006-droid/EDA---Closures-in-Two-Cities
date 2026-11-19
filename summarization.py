@@ -1,7 +1,17 @@
+"""
+This module contains functions for fetching, standardizing,
+and summarizing street closure data from Seattle and San Francisco.
+It includes functions to fetch data from Socrata APIs, standardize the datasets,
+check for missing data, compare categories between the two cities,
+and summarize the data with basic statistics.
+"""
+
 import pandas as pd
 from sodapy import Socrata
+import os
 
 pd.set_option('display.max_columns', None)
+pd.set_option('display.max_rows', None)
 
 
 def fetch_data(domain: str, dataset_id: str, limit: int, date: str) -> pd.DataFrame:
@@ -128,7 +138,7 @@ def data_summary(df: pd.DataFrame, numeric1: str, numeric2: str) -> pd.DataFrame
     df = df.copy()
 
     df['duration hours'] = (df[numeric2] - df[numeric1]).dt.total_seconds() / 3600
-    summary = df.groupby('city').describe()
+    summary = df.groupby('city')[['duration hours']].describe()
 
     return summary
 
@@ -144,7 +154,7 @@ def main():
             'dataset_id': '8x25-yybr'
         }
     }
-    where_clause = "start_date >= '2025-01-01T00:00:00'"
+    where_clause = "start_date >= '2026-01-01T00:00:00'"
 
     seattle_df = fetch_data(datasets['Seattle']['domain'],
                              datasets['Seattle']['dataset_id'], limit=100, date=where_clause)
@@ -153,15 +163,22 @@ def main():
 
     seattle_df = data_standardization(seattle_df, 'Seattle')
     sf_df = data_standardization(san_francisco_df, 'San_Francisco')
-    
+
     combined_df = pd.concat([seattle_df.assign(city='Seattle'),
                              sf_df.assign(city='San_Francisco')],
                              axis=0, ignore_index=True)
 
+    os.makedirs('new data', exist_ok=True)
+    seattle_df.to_csv('new data/seattle_closures.csv', index=False)
+    sf_df.to_csv('new data/sf_closures.csv', index=False)
+    combined_df.to_csv('new data/combined_closures.csv', index=False)
+
     # summary = data_summary(combined_df, 'start date', 'end date')
     # print(summary)
-    # print(combined_df.head())
-    print(data_dimensions(combined_df, 'Combined'))
+    seattle_places = seattle_df['location'].value_counts().fillna(0).astype(int)
+    seattle_places.to_csv('new data/seattle_closures.csv', index=True)
+    sf_places = sf_df['location'].value_counts().fillna(0).astype(int)
+    sf_places.to_csv('new data/sf_closures.csv', index=True)
 
 if __name__ == "__main__":
     main()
