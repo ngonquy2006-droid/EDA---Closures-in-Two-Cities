@@ -1,3 +1,8 @@
+""""
+This module contains functions for visualizing street closure data from Seattle and San Francisco.
+It includes functions to create bar charts for closure counts by month and by street,
+and a main function to fetch data through the summarization module and generate the visualizations.
+"""
 import matplotlib.pyplot as plt
 import pandas as pd
 import os

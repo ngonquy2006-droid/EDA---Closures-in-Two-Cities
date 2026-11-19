@@ -1,2 +1,4 @@
-# EDA---Closures-in-Two-Cities
-Exploratory Data Analysis on the two datasets about street closures in Seattle and San Francisco
+# Quy Ngo, Vivian Wang, Najat Alnuaimi
+# 11/18/2026
+# CSE 163
+# Final Project: Street Closures in Two Cities
